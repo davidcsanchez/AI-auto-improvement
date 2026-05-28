@@ -1,0 +1,2 @@
+class ActivePromptNotFoundError(RuntimeError):
+    pass

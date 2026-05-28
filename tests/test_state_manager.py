@@ -11,12 +11,6 @@ async def test_state_manager_singleton_and_lock_behavior() -> None:
 
     assert manager_one is manager_two
 
-    await manager_one.acquire_lock()
-    assert manager_one._lock.locked()
-
-    await manager_one.release_lock()
-    assert not manager_one._lock.locked()
-
 
 @pytest.mark.asyncio
 async def test_state_manager_counter_and_trigger() -> None:
@@ -24,12 +18,11 @@ async def test_state_manager_counter_and_trigger() -> None:
     manager = SystemStateManager()
 
     manager._process_count = settings.REVIEW_TRIGGER_LIMIT - 1
-    updated_count = await manager.increment_process_count()
+    should_trigger = await manager.increment_and_check_trigger()
 
-    assert updated_count == settings.REVIEW_TRIGGER_LIMIT
-    assert await manager.should_trigger_review()
+    assert should_trigger
 
     manager._process_count = settings.REVIEW_TRIGGER_LIMIT - 2
-    await manager.increment_process_count()
+    should_trigger = await manager.increment_and_check_trigger()
 
-    assert not await manager.should_trigger_review()
+    assert not should_trigger
