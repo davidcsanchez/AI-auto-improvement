@@ -1,7 +1,5 @@
 import asyncio
-
 from src.config.settings import get_settings
-
 
 class SystemStateManager():
     _instance: "SystemStateManager | None" = None
@@ -26,18 +24,7 @@ class SystemStateManager():
 
         self.__class__._initialized = True
 
-    async def increment_process_count(self) -> int:
-        self._process_count += 1
-        return self._process_count
-
-    async def should_trigger_review(self) -> bool:
-        if self._process_count <= 0:
-            return False
-        return self._process_count % self._review_trigger_limit == 0
-
-    async def acquire_lock(self) -> None:
-        await self._lock.acquire()
-
-    async def release_lock(self) -> None:
-        if self._lock.locked():
-            self._lock.release()
+    async def increment_and_check_trigger(self) -> bool:
+        async with self._lock:
+            self._process_count += 1
+            return self._process_count % self._review_trigger_limit == 0

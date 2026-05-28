@@ -8,10 +8,12 @@ from src.models.ticket_sample import TicketSample
 
 
 @pytest.mark.asyncio
-async def test_sqlite_storage_prompt_and_sample_save() -> None:
-    db_path = Path("test.db")
-    if db_path.exists():
-        db_path.unlink()
+async def test_sqlite_storage_prompt_and_sample_save(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    db_path = tmp_path.joinpath("test.db")
+    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{db_path.as_posix()}")
 
     storage = SQLiteTicketStorage()
 
