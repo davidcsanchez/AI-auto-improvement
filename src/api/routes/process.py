@@ -37,6 +37,6 @@ async def process_ticket(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     if await state_manager.increment_and_check_trigger():
-        background_tasks.add_task(trigger_review_pipeline)
+        background_tasks.add_task(trigger_review_pipeline, state_manager)
 
     return response

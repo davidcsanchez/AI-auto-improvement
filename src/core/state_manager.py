@@ -18,7 +18,7 @@ class SystemStateManager():
         self._lock = asyncio.Lock()
         self._process_count = 0
         self._review_trigger_limit = settings.REVIEW_TRIGGER_LIMIT
-
+        self._is_review_running = False
         if self._review_trigger_limit <= 0:
             raise ValueError("REVIEW_TRIGGER_LIMIT must be greater than zero")
 
@@ -27,4 +27,13 @@ class SystemStateManager():
     async def increment_and_check_trigger(self) -> bool:
         async with self._lock:
             self._process_count += 1
-            return self._process_count % self._review_trigger_limit == 0
+            if self._process_count % self._review_trigger_limit == 0:
+                if not self._is_review_running:
+                    self._is_review_running = True
+                    return True
+            return False
+        
+    async def release_review_lock(self) -> None:
+        async with self._lock:
+            self._is_review_running = False
+
