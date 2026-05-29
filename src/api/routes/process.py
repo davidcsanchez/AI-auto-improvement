@@ -3,6 +3,7 @@ from pydantic import BaseModel
 
 from src.api.dependencies import get_llm_client, get_state_manager, get_ticket_storage
 from src.core.exceptions import ActivePromptNotFoundError
+from src.core.logger import get_logger, truncate_text
 from src.core.state_manager import SystemStateManager
 from src.interfaces.llm_interface import ILLMClient
 from src.interfaces.storage_interface import ITicketStorage
@@ -16,6 +17,7 @@ class ProcessRequest(BaseModel):
 
 
 router = APIRouter()
+logger = get_logger(__name__)
 
 
 @router.post("/process", response_model=SupportTicketResponse)
@@ -31,9 +33,10 @@ async def process_ticket(
     try:
         response = await service.process_user_message(request.text)
     except ActivePromptNotFoundError as exc:
+        logger.error("Active prompt missing input=%s", truncate_text(request.text))
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     if await state_manager.increment_and_check_trigger():
-        background_tasks.add_task(trigger_review_pipeline)
+        background_tasks.add_task(trigger_review_pipeline, state_manager)
 
     return response

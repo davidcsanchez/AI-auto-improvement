@@ -8,7 +8,8 @@ from src.models.schemas import AffectedComponent, SupportTicketResponse, TicketI
 
 class DummySettings:
     API_KEY = "test-key"
-    llm_model_name = "test-model"
+    STUDENT_LLM_MODEL_NAME = "test-student"
+    PROFESSOR_LLM_MODEL_NAME = "test-professor"
 
 
 @pytest.mark.asyncio

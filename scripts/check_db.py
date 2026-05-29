@@ -19,6 +19,9 @@ def inspect_database(db_path: str):
         
         df_golden = pd.read_sql_query("SELECT * FROM goldensample", conn)
         print(df_golden)
+
+        df_prompt = pd.read_sql_query("SELECT * FROM promptversion", conn)
+        print(df_prompt)
         
     finally:
         conn.close()

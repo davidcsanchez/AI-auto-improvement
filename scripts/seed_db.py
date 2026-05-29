@@ -1,5 +1,6 @@
 import asyncio
 
+from src.config.settings import get_settings
 from src.core.sqlite_storage import SQLiteTicketStorage
 from src.models.golden_sample import GoldenSample
 from src.models.prompt_version import PromptVersion
@@ -7,32 +8,12 @@ from src.models.schemas import SupportTicketResponse
 
 
 async def seed_database() -> None:
+    settings = get_settings()
     storage = SQLiteTicketStorage()
 
     prompt = PromptVersion(
         parent_prompt_id=None,
-        content = (
-            "You are an IT support ticket classifier.\n\n"
-            
-            "1. INTENT Classification: Choose exactly one:\n"
-            "   [bug_report, feature_request, access_issue, billing_issue, other]\n\n"
-            
-            "2. URGENCY Classification: Choose exactly one:\n"
-            "   [low, medium, high, critical]\n\n"
-            
-            "3. AFFECTED COMPONENT: Choose exactly one:\n"
-            "   [frontend, backend_api, database, hardware, unknown]\n\n"
-            
-            "4. ESCALATION RULE (requires_manager_escalation):\n"
-            "   - DEFAULT VALUE: false\n"
-            "   - Set to true IF AND ONLY IF the text contains explicit anger, insults, "
-            "threats to leave the company, or mentions of legal action.\n"
-            "   - CRITICAL: Do NOT set to true for severe technical bugs, broken hardware, "
-            "or critical system outages unless the tone itself is angry or threatening. "
-            "A PC not turning on is high urgency, but requires_manager_escalation must remain false.\n\n"
-            
-            "Return only JSON matching the requested schema."
-        ),
+        content=settings.INITIAL_PROMPT,
         version_number=1,
         is_active=True,
         triggering_sample_ids="[]",
@@ -103,9 +84,5 @@ async def seed_database() -> None:
     print("Database seeded successfully with 1 prompt and 5 golden samples.")
 
 
-def main() -> None:
+def initialize_database() -> None:
     asyncio.run(seed_database())
-
-
-if __name__ == "__main__":
-    main()
