@@ -6,10 +6,14 @@ from sqlmodel import SQLModel, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.config.settings import get_settings
+from src.core.logger import get_logger, truncate_text
 from src.interfaces.storage_interface import ITicketStorage
 from src.models.golden_sample import GoldenSample
 from src.models.prompt_version import PromptVersion
 from src.models.ticket_sample import TicketSample
+
+
+logger = get_logger(__name__)
 
 
 class SQLiteTicketStorage(ITicketStorage):
@@ -80,6 +84,25 @@ class SQLiteTicketStorage(ITicketStorage):
             await session.refresh(sample)
             return sample
 
+    async def get_unevaluated_samples(self, limit: int) -> list[TicketSample]:
+        async with await self._get_session() as session:
+            statement = (
+                select(TicketSample)
+                .where(
+                    TicketSample.is_correct.is_(None),
+                )
+                .limit(limit)
+            )
+            result = await session.exec(statement)
+            return list(result.all())
+
+    async def update_ticket_sample(self, sample: TicketSample) -> TicketSample:
+        async with await self._get_session() as session:
+            session.add(sample)
+            await session.commit()
+            await session.refresh(sample)
+            return sample
+
     async def get_failed_evaluations(self) -> list[TicketSample]:
         async with await self._get_session() as session:
             statement = select(TicketSample).where(
@@ -100,3 +123,34 @@ class SQLiteTicketStorage(ITicketStorage):
             await session.commit()
             await session.refresh(sample)
             return sample
+
+    async def enforce_golden_dataset_limit(self, max_total: int) -> None:
+        async with await self._get_session() as session:
+            total_result = await session.exec(select(GoldenSample))
+            all_samples = list(total_result.all())
+            total_count = len(all_samples)
+            if total_count <= max_total:
+                return
+
+            delete_count = total_count - max_total
+            statement = (
+                select(GoldenSample)
+                .where(GoldenSample.is_base_case.is_(False))
+                .order_by(GoldenSample.id.asc())
+                .limit(delete_count)
+            )
+            result = await session.exec(statement)
+            to_delete = list(result.all())
+
+            for sample in to_delete:
+                logger.info(
+                    "Deleting golden sample id=%s input=%s",
+                    sample.id,
+                    truncate_text(sample.input_text),
+                )
+                await session.delete(sample)
+
+            await session.commit()
+
+            if total_count - len(to_delete) > max_total:
+                logger.warning("Golden dataset limit exceeded with base cases")
